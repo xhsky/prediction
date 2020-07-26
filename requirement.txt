@@ -1,0 +1,11 @@
+#backports.lzma==0.0.14
+mpmath==1.1.0
+numpy==1.18.4
+pandas==1.0.3
+patsy==0.5.1
+python-dateutil==2.8.1
+pytz==2020.1
+scipy==1.4.1
+six==1.15.0
+statsmodels==0.11.1
+sympy==1.5.1
