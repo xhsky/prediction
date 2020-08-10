@@ -103,7 +103,10 @@ def development_degree_of_change(data_dict, period):
     for time in time_list:
         pre_time=get_pre_date(period, time)
         if pre_time in time_list:
-            degree_of_change_data_dict[time]=(data_dict[time]*100)/data_dict[pre_time]-100
+            if data_dict[pre_time] is None:
+                degree_of_change_data_dict[time]=0
+            else:
+                degree_of_change_data_dict[time]=(data_dict[time]*100)/data_dict[pre_time]-100
     return degree_of_change_data_dict
 
 def get_pre_date(period, begin_date_str):
@@ -183,7 +186,10 @@ def merge(level_inter_args_dict, development_inter_args_dict, request):
                 value_sum=value_sum + n[0]*n[1]
                 weight_sum=weight_sum + n[1]
 
-            avg_data=value_sum/weight_sum
+            if weight_sum==0:
+                avg_data=value_sum
+            else:
+                avg_data=value_sum/weight_sum
             level_args_dict[i][time]=avg_data
 
     value_sum=0
@@ -194,7 +200,10 @@ def merge(level_inter_args_dict, development_inter_args_dict, request):
                 value_sum=value_sum + n[0]*n[1]
                 weight_sum=weight_sum + n[1]
 
-            avg_data=value_sum/weight_sum
+            if weight_sum==0:
+                avg_data=value_sum
+            else:
+                avg_data=value_sum/weight_sum
             development_args_dict[i][time]=avg_data
 
     return level_args_dict, development_args_dict
@@ -348,15 +357,16 @@ def main():
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     
-    data_json=sys.argv[1]
-    arg_dict=json.loads(data_json)
-    #with open("./data_eva.json", "r", encoding="utf8") as f:
-    #    arg_dict=json.load(f)
+    #data_json=sys.argv[1]
+    #arg_dict=json.loads(data_json)
+    with open("./a.json", "r", encoding="utf8") as f:
+        arg_dict=json.load(f)
 
     weight=[20, 80]
     data=arg_dict.get("data")
     request=arg_dict.get("request")
     comprehensive_dict=comprehensive_evaluation_mode(data, request, weight)
+    #print(comprehensive_dict)
 
     """
     # 数据转换
