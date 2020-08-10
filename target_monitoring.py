@@ -209,35 +209,50 @@ def main():
     
     # 合并体系, 分类, 总体的数据
     result={"result":[]}
-    for system in indicator_data_dict:
-        for region in indicator_data_dict[system]:
-            for indicator in indicator_data_dict[system][region]:
-                for timepoint in indicator_data_dict[system][region][indicator]:
-                    for time in indicator_data_dict[system][region][indicator][timepoint]:
-                        key=(system, region, indicator, timepoint, time)
-                        for system_key in system_data_dict:
-                            if set(system_key) < set(key):
-                               system_score=system_data_dict[system_key]["score"]
-                               system_degree_of_relization=system_data_dict[system_key]["degree_of_realization"][0]
-                               for total_key in total_data_dict:
-                                   if set(total_key) < set(key):
-                                       all_score=total_data_dict[total_key]["score"]
-                                       all_degree_of_relization=total_data_dict[total_key]["degree_of_realization"]
-                                       result["result"].append(
-                                               {
-                                                   "体系": system, 
-                                                   "地区": region, 
-                                                   "指标": indicator, 
-                                                   "时点": timepoint, 
-                                                   "时间": time, 
-                                                   "单项得分": indicator_data_dict[system][region][indicator][timepoint][time]["score"], 
-                                                   "单项实现程度": indicator_data_dict[system][region][indicator][timepoint][time]["degree_of_realization"], 
-                                                   "分类得分": system_score, 
-                                                   "分类实现程度": system_degree_of_relization, 
-                                                   "总体得分": all_score, 
-                                                   "总体实现程度": all_degree_of_relization
-                                           }
-                                               )
+    for system_key in system_data_dict:
+        system_score=system_data_dict[system_key]["score"]
+        system_degree_of_relization=system_data_dict[system_key]["degree_of_realization"][0]
+        result["result"].append(
+               {
+                   "指标": system_key[0], 
+                   "地区": system_key[1], 
+                   "时点": system_key[2], 
+                   "时间": system_key[3], 
+                   "综合得分": system_score, 
+                   "完成度": system_degree_of_relization
+               }
+           )
+        for system in indicator_data_dict:
+            for region in indicator_data_dict[system]:
+                for indicator in indicator_data_dict[system][region]:
+                    for timepoint in indicator_data_dict[system][region][indicator]:
+                        for time in indicator_data_dict[system][region][indicator][timepoint]:
+                            key=(system, region, indicator, timepoint, time)
+                            if set(key) > set(system_key):
+                               result["result"].append(
+                                       {
+                                           "指标": indicator, 
+                                           "地区": region, 
+                                           "时点": timepoint, 
+                                           "时间": time, 
+                                           "综合得分": indicator_data_dict[system][region][indicator][timepoint][time]["score"], 
+                                           "完成度": indicator_data_dict[system][region][indicator][timepoint][time]["degree_of_realization"]
+                                       }
+                                   )
+        for total_key in total_data_dict:
+           if set(system_key) > set(total_key):
+               all_score=total_data_dict[total_key]["score"]
+               all_degree_of_relization=total_data_dict[total_key]["degree_of_realization"]
+               result["result"].append(
+                       {
+                           "指标": "合计指数", 
+                           "地区": total_key[0], 
+                           "时点": total_key[1], 
+                           "时间": total_key[2], 
+                           "综合得分": all_score, 
+                           "完成度": all_degree_of_relization
+                       }
+                   )
     print(json.dumps(result, ensure_ascii=False))
     
 if __name__ == "__main__":
