@@ -106,7 +106,9 @@ def development_degree_of_change(data_dict, period):
             if data_dict[pre_time] is None:
                 degree_of_change_data_dict[time]=0
             else:
-                degree_of_change_data_dict[time]=(data_dict[time]*100)/data_dict[pre_time]-100
+                degree_of_change_data_dict[time]=round((data_dict[time]*100)/data_dict[pre_time]-100, 2)
+                #degree_of_change_data_dict[time]=(data_dict[time]*100)/data_dict[pre_time]-100
+            #print(f"change: {(data_dict[time]*100)/data_dict[pre_time]-100}, {data_dict[time]*100}, {data_dict[pre_time]}")
     return degree_of_change_data_dict
 
 def get_pre_date(period, begin_date_str):
@@ -270,36 +272,43 @@ def comprehensive_evaluation_mode(data, request, weight):
                             current_data=0
                         max_data=max(level_data_list)
                         min_data=min(level_data_list)
-                        difference=max_data-min_data
+                        difference=round(max_data-min_data, 2)
                         if difference==0:
                             level_data=0
                         else:
                             if calculation_type==1:
-                                level_data=(current_data-min_data)*weight[0] / difference + weight[1]
+                                level_data=round((current_data-min_data), 2)*weight[0] / difference + weight[1]
                             elif calculation_type==-1:
-                                level_data=(max_data-current_data)*weight[0] / difference + weight[1]
+                                level_data=round((max_data-current_data), 2)*weight[0] / difference + weight[1]
                         level_inter_args_dict[i][type_1_index][1][key_time]=level_data
 
                     development_data_list=[]
                     for value in degree_of_change_args_dict[i]:
                         development_data_list.append(value[1][key_time])
-                    for type_1_index, type_1_item in enumerate(raw_args_dict[i]):
+                    for type_1_index, type_1_item in enumerate(degree_of_change_args_dict[i]):
                         current_data=type_1_item[1][key_time] 
                         if current_data is None:
                             current_data=0
                         max_data=max(development_data_list)
                         min_data=min(development_data_list)
-                        difference=max_data-min_data
+                        difference=round(max_data-min_data, 2)
                         if difference == 0:
                             development_data=0
                         else:
                             if calculation_type==1:
-                                development_data=(current_data-min_data)*weight[0] / difference + weight[1]
+                                development_data=round(current_data-min_data, 2)*weight[0] / difference + weight[1]
                             elif calculation_type==-1:
-                                development_data=(max_data-current_data)*weight[0] / difference + weight[1]
+                                development_data=round(max_data-current_data, 2)*weight[0] / difference + weight[1]
+                        #print(f"{i=}, {current_data=}, {max_data=}, {min_data=}, {difference=}, {development_data=}")
                         development_inter_args_dict[i][type_1_index][1][key_time]=development_data
 
+    #print(f"水平中间值: {level_inter_args_dict}")
+    #print(f"发展中间值: {development_inter_args_dict}")
+
     level_args_dict, development_args_dict=merge(level_inter_args_dict, development_inter_args_dict, request)
+
+    #print(f"水平值: {level_args_dict}")
+    #print(f"发展值: {development_args_dict}")
 
     level_weight, development_weight=request["weight"]
     comprehensive_dict={}
@@ -309,7 +318,7 @@ def comprehensive_evaluation_mode(data, request, weight):
             if i==j:
                 for time in level_args_dict[i]:
                     comprehensive_dict[i][time]=level_args_dict[i][time] * level_weight + development_args_dict[i][time] * development_weight
-    return comprehensive_dict
+    return level_args_dict, development_args_dict, comprehensive_dict
 
 def main():
     """
@@ -352,37 +361,57 @@ def main():
             "weight": [0.5, 0.5]           // [水平权重, 发展权重]
         }
     }
+
+    return:
+        {
+            result:[
+                {
+                    "地区": "region", 
+                    "时点": "timepoint", 
+                    "时间": "time", 
+                    "system1-综合评价": N, 
+                    "system1-水平指数评价": N, 
+                    "system1-发展指数评价": N, 
+                    "system2-综合评价": N, 
+                    "system2-水平指数评价": N, 
+                    "system2-发展指数评价": N
+                }, 
+                {
+                }
+            ]
+        }
     """
 
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     
-    #data_json=sys.argv[1]
-    #arg_dict=json.loads(data_json)
-    with open("./a.json", "r", encoding="utf8") as f:
-        arg_dict=json.load(f)
+    data_json=sys.argv[1]
+    arg_dict=json.loads(data_json)
+    #with open("./a.json", "r", encoding="utf8") as f:
+    #    arg_dict=json.load(f)
 
     weight=[20, 80]
     data=arg_dict.get("data")
     request=arg_dict.get("request")
-    comprehensive_dict=comprehensive_evaluation_mode(data, request, weight)
-    #print(comprehensive_dict)
+    level_dict, development_dict, comprehensive_dict=comprehensive_evaluation_mode(data, request, weight)
+    #print(f"{level_dict=}\n{development_dict=}\n{comprehensive_dict=}")
+
 
     """
     # 数据转换
     result={
-        (region, timepoint, time): [(system, N), (system, N)]
+        (region, timepoint, time): [(system, level_N, deve_N, com_N), ]
     }
     """
     result={}
     for i in comprehensive_dict:
         for time in comprehensive_dict[i]:
             key=(i[1], i[2], time)
+            value=(i[0], level_dict[i][time], development_dict[i][time], comprehensive_dict[i][time])
             if key not in result:
-                result[key]=[(i[0], comprehensive_dict[i][time])]
+                result[key]=[value]
             else:
-                result[key].append((i[0], comprehensive_dict[i][time]))
-
+                result[key].append(value)
     """
     # 赋中文值
     """
@@ -390,7 +419,9 @@ def main():
     for i in result:
         temp={"地区":i[0], "时点":i[1], "时间":i[2]}
         for j in result[i]:
-            temp[j[0]]=round(j[1], 2)
+            temp[f"{j[0]}-水平指数评价"]=round(j[1], 2)
+            temp[f"{j[0]}-发展指数评价"]=round(j[2], 2)
+            temp[f"{j[0]}-综合指数评价"]=round(j[3], 2)
         merge_dict["result"].append(temp)
 
     print(json.dumps(merge_dict, ensure_ascii=False))

@@ -147,10 +147,10 @@ def main():
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     
-    #data_json=sys.argv[1]
-    #arg_dict=json.loads(data_json)
-    with open("./data.json", "r", encoding="utf8") as f:
-        arg_dict=json.load(f)
+    data_json=sys.argv[1]
+    arg_dict=json.loads(data_json)
+    #with open("./data.json", "r", encoding="utf8") as f:
+    #    arg_dict=json.load(f)
 
     weight=[20, 80]
     data=arg_dict.get("data")

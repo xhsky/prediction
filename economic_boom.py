@@ -64,8 +64,8 @@ def forecasted_date_fun(date_format, begin_date_str, forecasted_length):
     #date_list.remove(date_list[0])          # 去掉第一个时间(list中已有)
     return date_list
 
-def data_polyfit(data_list, forecasted_length, polyfit_times):
-    x=range(len(data_list))
+def data_polyfit(data_list, forecasted_length, polyfit_times, weight):
+    x=range(1, len(data_list)+1)
     fx=np.polyfit(x, data_list, polyfit_times)
     p=np.poly1d(fx)
     new_x=range(len(data_list)+forecasted_length)
@@ -74,6 +74,23 @@ def data_polyfit(data_list, forecasted_length, polyfit_times):
         new_y.append(round(y, 2))
     return new_y
 
+    """
+    # 归一处理: 使拟合值不超过100
+    change_y=[]
+    fit_max=max(new_y)
+    fit_min=min(new_y)
+    difference=fit_max-fit_min
+    for value in new_y:
+        if difference==0:
+            median=0
+        else:
+            median=((value-fit_min) * weight[0] / difference ) + weight[1]
+        change_y.append(median)
+    round_change_y=[]
+    for y in change_y:
+        round_change_y.append(round(y, 2))
+    return round_change_y
+    """
 def economic_boom_mode(data, request, weight):
     """
         signal_data=[
@@ -91,7 +108,7 @@ def economic_boom_mode(data, request, weight):
             {
                 指标:
                 地区:
-                时点:
+                #时点:
                 时间:
                 指数:
                 拟合值:
@@ -104,10 +121,11 @@ def economic_boom_mode(data, request, weight):
     for system in request:
         if system != "forecasted_length" and system != "fit_times" and system != "period":
             for request_indicator in request[system]:
-                for region in data:
-                    if data[region].get(request_indicator) is not None:
-                        for timepoint in data[region][request_indicator]:
-                            raw_data_dict=data[region][request_indicator][timepoint]
+                for request_timepoint in request[system][request_indicator]:
+                    for region in data:
+                        if data[region].get(request_indicator) is not None and \
+                                data[region].get(request_indicator).get(request_timepoint) is not None:
+                            raw_data_dict=data[region][request_indicator][request_timepoint]
                             current_value_dict={}
                             # 原始值状态
                             for time in raw_data_dict:
@@ -115,7 +133,7 @@ def economic_boom_mode(data, request, weight):
                                         "指数": system, 
                                         "指标": request_indicator, 
                                         "地区": region, 
-                                        "时点": timepoint, 
+                                        "时点": request_timepoint, 
                                         "时间": time
                                         }
                                 value=raw_data_dict[time]
@@ -123,7 +141,7 @@ def economic_boom_mode(data, request, weight):
                                     value=0
                                     value_status="无状态"
                                 else:
-                                    status_dict=request[system][request_indicator]["status"]
+                                    status_dict=request[system][request_indicator][request_timepoint]["status"]
                                     for status in status_dict:
                                         if value >= status_dict[status][0] and value < status_dict[status][1]:
                                             value_status=status
@@ -136,7 +154,7 @@ def economic_boom_mode(data, request, weight):
                                 current_value_dict[time]=value
 
                             # 中间值
-                            key=(system, region, request_indicator, timepoint)
+                            key=(system, region, request_indicator, request_timepoint)
                             inter_data[key]=[]
                             max_value=max(current_value_dict.values())
                             min_value=min(current_value_dict.values())
@@ -152,9 +170,9 @@ def economic_boom_mode(data, request, weight):
     system_temp_data={}
     for indicator_key in inter_data:
         for i in inter_data[indicator_key]:
-            system_temp_key=(indicator_key[0], indicator_key[1], indicator_key[3], i[0])
-            system_indicator_weight=request[indicator_key[0]][indicator_key[2]]["weight"]
-            value=(indicator_key[2], i[1], system_indicator_weight)
+            system_temp_key=(indicator_key[0], indicator_key[1], i[0])
+            system_indicator_timepoint_weight=request[indicator_key[0]][indicator_key[2]][indicator_key[3]]["weight"]
+            value=(indicator_key[2], i[1], system_indicator_timepoint_weight, indicator_key[3])
             if system_temp_key not in system_temp_data:
                 system_temp_data[system_temp_key]=[value, ]
             else:
@@ -172,8 +190,8 @@ def economic_boom_mode(data, request, weight):
             print("权重和不可为0")
             exit()
         else:
-            system_value=system_value_sum/weight_sum
-            key=i[0:3]
+            system_value=round(system_value_sum/weight_sum, 2)
+            key=i[0:2]
             system_status_dict=request[i[0]]["status"]
             for system_status in system_status_dict:
                 if system_value >= system_status_dict[system_status][0] and system_value < system_status_dict[system_status][1]:
@@ -185,13 +203,13 @@ def economic_boom_mode(data, request, weight):
                     "指数": i[0], 
                     "指标": i[0], 
                     "地区": i[1], 
-                    "时点": i[2], 
-                    "时间": i[3],
+                    "时点": None, 
+                    "时间": i[2],
                     "值": system_value_status
                     }
             signal_data.append(temp_signal_dict)
 
-            value=(i[3], system_value, weight_sum)
+            value=(i[2], system_value, weight_sum)
             if key not in system_data:
                 system_data[key]=[value, ]
             else:
@@ -200,7 +218,7 @@ def economic_boom_mode(data, request, weight):
     comprehensive_temp_data={}
     for i in system_data:
         for j in system_data[i]:
-            key=(i[1], i[2], j[0])
+            key=(i[1], j[0])
             value=(j[1], j[2])
             if key not in comprehensive_temp_data:
                 comprehensive_temp_data[key]=[value]
@@ -209,7 +227,7 @@ def economic_boom_mode(data, request, weight):
 
     comprehensive_data={}
     for i in comprehensive_temp_data:
-        key=(i[0], i[1])
+        key=i[0]
         if key not in comprehensive_data:
             comprehensive_data[key]={}
         com_weight_sum=sum([x[1] for x in comprehensive_temp_data[i]])
@@ -217,7 +235,7 @@ def economic_boom_mode(data, request, weight):
         for j in comprehensive_temp_data[i]:
             value_sum=value_sum+j[0]*j[1]
         value=round(value_sum/com_weight_sum, 2)
-        comprehensive_data[key][i[2]]=value
+        comprehensive_data[key][i[1]]=value
 
     # fit
     forecasted_length=request["forecasted_length"]
@@ -232,7 +250,7 @@ def economic_boom_mode(data, request, weight):
         sorted_data_list=data_sorting(temp_data_dict, data_type)
         sorted_num_list=[x[1] for x in sorted_data_list]
         fit_date_list=forecasted_date_fun(data_type, sorted_data_list[0][0], len(sorted_data_list)+forecasted_length)
-        fit_num_list=data_polyfit(sorted_num_list, forecasted_length, fit_times)
+        fit_num_list=data_polyfit(sorted_num_list, forecasted_length, fit_times, weight)
         fit_data_dict=dict(zip(fit_date_list, fit_num_list))
         #print(f"{i=}, {fit_num_list=}, {fit_date_list=}, {fit_data_dict}")
         fit_system_data[i]=fit_data_dict
@@ -243,7 +261,7 @@ def economic_boom_mode(data, request, weight):
         sorted_data_list=data_sorting(comprehensive_data[i], data_type)
         sorted_num_list=[x[1] for x in sorted_data_list]
         fit_date_list=forecasted_date_fun(data_type, sorted_data_list[0][0], len(sorted_data_list)+forecasted_length)
-        fit_num_list=data_polyfit(sorted_num_list, forecasted_length, fit_times)
+        fit_num_list=data_polyfit(sorted_num_list, forecasted_length, fit_times, weight)
         fit_data_dict=dict(zip(fit_date_list, fit_num_list))
         fit_comprehensive_data[i]=fit_data_dict
 
@@ -283,32 +301,32 @@ def line_data_merge(system_data, comprehensive_data, fit_system_data, fit_compre
         }
 
         system_temp_data={
-            (system, region, timepoint, time): [(indicator, median_value, weight), ]
+            (system, region, time): [(indicator, median_value, weight, timepoint), ]
         }
         system_data={
-            (system, region, timepoint): [(time, system_value, weight_sum), ]
+            (system, region): [(time, system_value, weight_sum), ]
         }
 
         fit_system_data={
-            (system, region, timepoint): {
+            (system, region): {
                 time: fit_value, 
                 time: fit_value
             }
         }
 
         fit_comprehensive_data={
-            (region, timepoint): {
+            region: {
                 time: fit_value, 
                 time: fit_value
                 }
         }
 
         comprehensive_temp_data={
-            (region, timepoint, time):[(system_value, weight_sum), ]
+            (region, time):[(system_value, weight_sum), ]
         }
 
         comprehensive_data={
-            (region, timepoint): {
+            region : {
                 time: comprehensive_value, 
                 time: comprehensive_value
                 }
@@ -322,7 +340,6 @@ def line_data_merge(system_data, comprehensive_data, fit_system_data, fit_compre
             temp_dict={
                     "指数": i[0], 
                     "地区": i[1], 
-                    "时点": i[2], 
                     "时间": fit_time, 
                     "拟合值": fit_system_data[i][fit_time]
                     }
@@ -338,8 +355,7 @@ def line_data_merge(system_data, comprehensive_data, fit_system_data, fit_compre
         for fit_time in fit_comprehensive_data[i]:
             temp_dict={
                     "指数": "综合", 
-                    "地区": i[0], 
-                    "时点": i[1], 
+                    "地区": i, 
                     "时间": fit_time, 
                     "拟合值": fit_comprehensive_data[i][fit_time]
                     }
@@ -371,14 +387,17 @@ def main():
             "period": "year"                     // 数据日期的格式: year|month|quarter
             "system1":{
                 "indicator1": {
-                    "status":{                  //指标下原始值状态
-                        "过冷":[min, max], 
-                        "偏冷":[min, max], 
-                        "正常":[min, max], 
-                        "偏热":[min, max], 
-                        "过热":[min, max]
-                    }
-                    "weight":N                  // 该指标权重值
+                    "timepoint":{
+                        "status":{                  //时点下原始值状态
+                            "过冷":[min, max], 
+                            "偏冷":[min, max], 
+                            "正常":[min, max], 
+                            "偏热":[min, max], 
+                            "过热":[min, max]
+                        }
+                        "weight":N                  // 该时点权重值
+                    }, 
+                    "timepoint":{}
                 }
                 "indicator2": {}
                 "status":{                     // 体系指数状态
@@ -398,10 +417,10 @@ def main():
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     
-    #data_json=sys.argv[1]
-    #arg_dict=json.loads(data_json)
-    with open("./data_boom.json", "r", encoding="utf8") as f:
-        arg_dict=json.load(f)
+    data_json=sys.argv[1]
+    arg_dict=json.loads(data_json)
+    #with open("./data_boom.json", "r", encoding="utf8") as f:
+    #    arg_dict=json.load(f)
 
     weight=[20, 80]
     data=arg_dict.get("data")

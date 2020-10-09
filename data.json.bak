@@ -99,10 +99,15 @@
   }, 
   "request":{
     "体系1":{
-      "indicator":["学前三年教育毛入园率", "九年义务教育巩固率"]
+      "indicator":[
+        {"indicator": "学前三年教育毛入园率", "timepoint":"本期"}, 
+        {"indicator": "九年义务教育巩固率", "timepoint":"上期"}
+      ]
     }, 
     "体系2":{
-      "indicator":["高中阶段毛入学率"]
+      "indicator":[
+        {"indicator":"高中阶段毛入学率", "timepoint": "本期"}
+      ]
     }
   }
 }
